@@ -26,6 +26,10 @@ var AudioSource = (function () {
             if (this._time != value) {
                 this._time = value;
                 Fire.AudioContext.updateTime(this);
+                if (this._play) {
+                    this.stop(false);
+                    this.play();
+                }
             }
         }
     });
@@ -114,14 +118,18 @@ var AudioSource = (function () {
         this._pause = false;
     };
 
-    AudioSource.prototype.stop = function () {
-        Fire.AudioContext.stop(this);
+    AudioSource.prototype.stop = function (isAutoStop) {
+        if (!this._play) {
+            return;
+        }
+        var autoStop = isAutoStop != null ? isAutoStop : true;
+        Fire.AudioContext.stop(this, autoStop);
         this._play = false;
         this._pause = false;
     };
 
     AudioSource.prototype.onLoad = function () {
-        if (!Fire.Engine.isPlaying) {
+        if (!Fire.Engine.isPlaying && this._play) {
             this.stop();
         }
     };
