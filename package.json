@@ -6,8 +6,9 @@
     "fireball-x": {
         "asset": {
             "pattern": ".mp3 .ogg .wav",
-            "inspector": "editor/audio-clip-inspector.js",
-            "meta": "editor/audio-clip-meta.js"
+            "asset": "src/audio-clip.js",
+            "meta": "editor/audio-clip-meta.js",
+            "inspector": "editor/audio-clip-inspector.js"
         }
     }
 }

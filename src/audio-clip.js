@@ -39,3 +39,5 @@ Fire.AudioClip.prototype.createEntity = function ( cb ) {
         cb (ent);
 };
 // @endif
+
+module.exports = Fire.AudioClip;
