@@ -26,7 +26,7 @@
     };
 
     AudioContext.getCurrentTime = function (target) {
-        if (target && target._audio && target._play) {
+        if (target && target._audio && target._playing) {
             return target._audio.currentTime;
         }
         else {
@@ -84,7 +84,7 @@
     // 播放
     AudioContext.play = function (target) {
         if (!target || !target.clip || !target.clip.rawData) { return; }
-        if (target._play && !target._pause) { return; }
+        if (target._playing && !target._paused) { return; }
         this.updateAudioClip(target);
         this.updateVolume(target);
         this.updateLoop(target);

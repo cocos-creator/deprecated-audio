@@ -3,8 +3,8 @@ var AudioSource = (function () {
     var AudioSource = Fire.define("Fire.AudioSource", Fire.Component, function () {
         Fire.AudioContext.initSource(this);
         this._time = 0;
-        this._play = false; //-- 声源暂停或者停止时候为false
-        this._pause = false;//-- 来区分声源是暂停还是停止
+        this._playing = false; //-- 声源暂停或者停止时候为false
+        this._paused = false;//-- 来区分声源是暂停还是停止
         this.onEnd = null;
     });
 
@@ -13,8 +13,12 @@ var AudioSource = (function () {
 
     //-- 返回当前播放的状态
     AudioSource.get("isPlaying", function () {
-        return this._play && !this._pause;
-    }, Fire.HideInInspector);   
+        return this._playing && !this._paused;
+    }, Fire.HideInInspector);
+
+    AudioSource.get("isPaused", function () {
+        return this._paused;
+    }, Fire.HideInInspector);
 
     //-- 当前时间
     Object.defineProperty(AudioSource.prototype, 'time', {
@@ -26,7 +30,7 @@ var AudioSource = (function () {
             if (this._time != value) {
                 this._time = value;
                 Fire.AudioContext.updateTime(this);
-                if (this._play) {
+                if (this._playing) {
                     this.stop(false);
                     this.play();
                 }
@@ -97,39 +101,39 @@ var AudioSource = (function () {
 
     //-- 播放结束以后的回调
     AudioSource.prototype.onPlayEnd = function () {
-        if (this._pause) {
+        if (this._paused) {
             return;
         }
         if (this.onEnd) {
             this.onEnd();
         }
-        this._play = false;
-        this._pause = false;
+        this._playing = false;
+        this._paused = false;
     };
 
     AudioSource.prototype.pause = function () {
-        this._pause = true;
+        this._paused = true;
         Fire.AudioContext.pause(this);
     };
 
     AudioSource.prototype.play = function () {
         Fire.AudioContext.play(this);
-        this._play = true;
-        this._pause = false;
+        this._playing = true;
+        this._paused = false;
     };
 
     AudioSource.prototype.stop = function (isAutoStop) {
-        if (!this._play) {
+        if (!this._playing) {
             return;
         }
-        var autoStop = isAutoStop != null ? isAutoStop : true;
+        var autoStop = (isAutoStop !== null) ? isAutoStop : true;
         Fire.AudioContext.stop(this, autoStop);
-        this._play = false;
-        this._pause = false;
+        this._playing = false;
+        this._paused = false;
     };
 
     AudioSource.prototype.onLoad = function () {
-        if (!Fire.Engine.isPlaying && this._play) {
+        if (!Fire.Engine.isPlaying && this._playing) {
             this.stop();
         }
     };
