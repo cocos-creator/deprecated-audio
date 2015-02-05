@@ -34,13 +34,10 @@
         }
     };
 
-    AudioContext.updateTime = function (target) {
+    AudioContext.updateTime = function (target, value) {
         if (target && target._audio) {
             var duration = target._audio.duration;
-            if (target._time >= target._audio.duration) {
-                target._time = duration;
-                target._audio.currentTime = target._time;
-            }
+            target._audio.currentTime = value;
         }
     };
 

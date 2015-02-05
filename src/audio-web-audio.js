@@ -1,18 +1,18 @@
 ﻿(function () {
-    var UseWebAudio = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext);
-    var webAudio = null;
-    if (!UseWebAudio) {
+    var NativeAudioContext = (window.AudioContext || window.webkitAudioContext || window.mozAudioContext);
+    var nativeAC = null;
+
+    if ( !NativeAudioContext ) {
         return;
     }
-    var AudioContext = {};
 
     function loader (url, callback, onProgress) {
         var cb = callback && function (xhr, error) {
             if (xhr) {
-                if (!webAudio) {
-                    webAudio = new UseWebAudio();
+                if (!nativeAC) {
+                    nativeAC = new NativeAudioContext();
                 }
-                webAudio.decodeAudioData(xhr.response, function (buffer) {
+                nativeAC.decodeAudioData(xhr.response, function (buffer) {
                     callback(buffer);
                 },function (e) {
                     callback(null, 'LoadAudioClip: "' + url +
@@ -29,210 +29,145 @@
 
     Fire.LoadManager.registerRawTypes('audio', loader);
 
-    AudioContext.initSource = function (target) {
-        target._startOffset = 0;
-        target._startTime = 0;
-        target._curTime = 0;
-        target._buffSource = null;
-        target._volumeGain = null;
-    };
-
-    AudioContext.getBuffSource = function (target) {
-        if (!target._buffSource) {
-            target._buffSource = webAudio.createBufferSource();
-        }
-        return target._buffSource;
-    };
-
-    AudioContext.getVolumeGain = function (target) {
-        if (!target._volumeGain) {
-            target._volumeGain = webAudio.createGain();
-        }
-        return target._volumeGain;
-    };
+    var AudioContext = {};
 
     AudioContext.getCurrentTime = function (target) {
-        if (target) {
-            var source = this.getBuffSource(target);
-            var buffer = source.buffer;
-            if (target._paused) {
-                return target._startOffset % buffer.duration;
-            }
-            else if (target._playing) {
-                var loadedTime = webAudio.currentTime;
-                var curTime = target._startOffset + loadedTime - target._startTime;
-                var duration = buffer.duration;
-                curTime = curTime >= duration ? duration : curTime;
-                return curTime;
-            }
+        if ( target._paused ) {
+            return target._startTime;
         }
-        else {
-            return target._time;
+
+        if ( target._playing ) {
+            return target._startTime + this.getPlayedTime(target);
+        }
+
+        return 0;
+    };
+
+    AudioContext.getPlayedTime = function (target) {
+        return (nativeAC.currentTime - target._lastPlay) * target._playbackRate;
+    };
+
+    //
+    AudioContext.updateTime = function (target, time) {
+        target._lastPlay = nativeAC.currentTime;
+        target._startTime = time;
+
+        if ( target.isPlaying ) {
+            this.pause(target);
+            this.play(target);
         }
     };
 
-    AudioContext.updateTime = function (target) {
-        // 当前时间就等于 audio source 的 _time
-        if (target) {
-            var source = this.getBuffSource(target);
-            var duration = source.buffer.duration;
-            if (target._time > duration) {
-                target._time = duration;
-            }
-            target._curTime = target._time;
-            target._startOffset = target._curTime;
-        }
-    };
-
-    // 静音
+    //
     AudioContext.updateMute = function (target) {
-        if (!target || !target._volumeGain) { return; }
-        target._volumeGain.gain.value = target.mute ? -1 : this.updateVolume(target);
+        if (!target._volumeGain) { return; }
+        target._volumeGain.gain.value = target.mute ? -1 : (target.volume - 1);
     };
 
-    // 设置音量，音量范围是[0, 1]
+    // range [0,1]
     AudioContext.updateVolume = function (target) {
-        if (!target || !target._volumeGain) { return; }
-        target._volumeGain.gain.value = (target.volume - 1);
+        if (!target._volumeGain) { return; }
+        target._volumeGain.gain.value = target.volume - 1;
     };
 
-    // 设置循环
+    //
     AudioContext.updateLoop = function (target) {
-        if (!target) { return; }
-        var source = this.getBuffSource(target);
-        source.loop = target.loop;
+        if (!target._buffSource) { return; }
+        target._buffSource.loop = target.loop;
     };
 
-    // 将音乐源节点绑定具体的音频buffer
+    // bind buffer source
     AudioContext.updateAudioClip = function (target) {
-        if (!target) { return; }
-        var source = this.getBuffSource(target);
-        source.buffer = target.clip.rawData;
-    };
-
-    // 暂停
-    AudioContext.pause = function (target) {
-        this.stop(target, true);
-    };
-
-    // 停止
-    AudioContext.stop = function (target, autoStop) {
-        if (!target || !target._buffSource || !target._playing) { return; }
-        if (!autoStop) {
-            target._buffSource.onended = null;
+        if ( target.isPlaying ) {
+            this.stop(target,false);
+            this.play(target);
         }
-        else {
-            if (target._paused) {
-                target._startOffset += webAudio.currentTime - target._startTime;
-            }
-            else {
-                target._startOffset = 0;
-            }
+    };
+
+    //
+    AudioContext.updatePlaybackRate = function (target) {
+        if ( !this.isPaused ) {
+            this.pause(target);
+            this.play(target);
+        }
+    };
+
+    //
+    AudioContext.pause = function (target) {
+        if (!target._buffSource) { return; }
+
+        target._startTime += this.getPlayedTime(target);
+        target._buffSource.onended = null;
+        target._buffSource.stop();
+    };
+
+    //
+    AudioContext.stop = function ( target, ended ) {
+        if (!target._buffSource) { return; }
+
+        if ( !ended ) {
+            target._buffSource.onended = null;
         }
         target._buffSource.stop();
     };
 
-    // 播放
-    AudioContext.play = function (target) {
+    //
+    AudioContext.play = function ( target, at ) {
         if (!target.clip || !target.clip.rawData) { return; }
-        if (target._playing) { return; }
 
-        // 初始化
-        target._buffSource = null;
-        target._volumeGain = null;
+        // create buffer source
+        var bufferSource = nativeAC.createBufferSource();
 
-        // 创建音频源节点
-        var bufsrc = webAudio.createBufferSource();
+        // create volume control
+        var gain = nativeAC.createGain();
 
-        // 控制音量的节点
-        var gain = webAudio.createGain();
+        // connect
+        bufferSource.connect(gain);
+        gain.connect(nativeAC.destination);
+        bufferSource.connect(nativeAC.destination);
 
-        // source节点先连接到对音量控制的volume增益节点上
-        bufsrc.connect(gain);
+        // init parameters
+        bufferSource.buffer = target.clip.rawData;
+        bufferSource.loop = target.loop;
+        bufferSource.playbackRate.value = target.playbackRate;
+        bufferSource.onended = target.onPlayEnd.bind(target);
+        gain.gain.value = target.mute ? -1 : (target.volume - 1);
 
-        // volume增益节点再连接到最终的输出设备上
-        gain.connect(webAudio.destination);
-
-        // 将音频源与硬件连接
-        bufsrc.connect(webAudio.destination);
-        target._buffSource = bufsrc;
+        //
+        target._buffSource = bufferSource;
         target._volumeGain = gain;
+        target._startTime = at || 0;
+        target._lastPlay = nativeAC.currentTime;
 
-        // 设置开始播放时间
-        target._startTime = webAudio.currentTime;
-
-        // 将音乐源节点绑定具体的音频buffer
-        this.updateAudioClip(target);
-
-        // 设置音量，音量范围是[0, 1]
-        this.updateVolume(target);
-
-        // 是否禁音
-        this.updateMute(target);
-
-        // 是否循环播放
-        this.updateLoop(target);
-
-        // 播放音乐
-        if (target._paused && target._curTime === 0) {
-            var buffer = target._buffSource.buffer;
-            target._buffSource.start(0, target._startOffset % buffer.duration);
-        }
-        else {
-            target._buffSource.start(0, target._curTime);
-        }
-        target._curTime = 0;
-
-        // 播放结束后的回调
-        target._buffSource.onended = target.onPlayEnd.bind(target);
+        // play
+        bufferSource.start( 0, this.getCurrentTime(target) );
     };
 
-    // 创建buff Source
-    function _createBufferSource(clip) {
-        var buffSource = webAudio.createBufferSource();
-        buffSource.buffer = clip.rawData;
-        return buffSource.buffer;
-    }
+    // ===================
 
-    // 获得音频剪辑的 buffer
+    //
     AudioContext.getClipBuffer = function (clip) {
         return clip.rawData;
     };
 
-    // 以秒为单位 获取音频剪辑的 长度
+    //
     AudioContext.getClipLength = function (clip) {
-        if (!clip) {
-            return;
-        }
-        var buffer = _createBufferSource(clip);
-        return buffer.duration;
+        return clip.rawData.duration;
     };
 
-    // 音频剪辑的长度
+    //
     AudioContext.getClipSamples = function (clip) {
-        if (!clip) {
-            return;
-        }
-        var buffer = _createBufferSource(clip);
-        return buffer.length;
+        return clip.rawData.length;
     };
 
-    // 音频剪辑的声道数
+    //
     AudioContext.getClipChannels = function (clip) {
-        if (!clip) {
-            return;
-        }
-        var buffer = _createBufferSource(clip);
-        return buffer.numberOfChannels;
+        return clip.rawData.numberOfChannels;
     };
 
-    // 音频剪辑的采样频率
+    //
     AudioContext.getClipFrequency = function (clip) {
-        if (!clip) {
-            return;
-        }
-        var buffer = _createBufferSource(clip);
-        return buffer.sampleRate;
+        return clip.rawData.sampleRate;
     };
 
 

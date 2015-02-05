@@ -1,44 +1,59 @@
 ﻿
 var AudioSource = (function () {
     var AudioSource = Fire.define("Fire.AudioSource", Fire.Component, function () {
-        Fire.AudioContext.initSource(this);
-        this._time = 0;
         this._playing = false; //-- 声源暂停或者停止时候为false
         this._paused = false;//-- 来区分声源是暂停还是停止
+
+        this._startTime = 0;
+        this._lastPlay = 0;
+
+        this._buffSource = null;
+        this._volumeGain = null;
+
         this.onEnd = null;
     });
 
-    //-- 增加 Audio Sources 到 组件菜单上
+    //
     Fire.addComponentMenu(AudioSource, 'AudioSource');
 
-    //-- 返回当前播放的状态
-    AudioSource.get("isPlaying", function () {
-        return this._playing && !this._paused;
-    }, Fire.HideInInspector);
-
-    AudioSource.get("isPaused", function () {
-        return this._paused;
-    }, Fire.HideInInspector);
-
-    //-- 当前时间
-    Object.defineProperty(AudioSource.prototype, 'time', {
+    //
+    Object.defineProperty(AudioSource.prototype, "isPlaying", {
         get: function () {
-            this._time = Fire.AudioContext.getCurrentTime(this);
-            return this._time;
-        },
-        set: function (value) {
-            if (this._time != value) {
-                this._time = value;
-                Fire.AudioContext.updateTime(this);
-                if (this._playing) {
-                    this.stop(false);
-                    this.play();
-                }
-            }
+            return this._playing && !this._paused;
         }
     });
 
-    //-- 当前音频剪辑
+    Object.defineProperty(AudioSource.prototype, "isPaused", {
+        get: function () {
+            return this._paused;
+        }
+    });
+
+    //
+    Object.defineProperty(AudioSource.prototype, 'time', {
+        get: function () {
+            return Fire.AudioContext.getCurrentTime(this);
+        },
+        set: function (value) {
+            Fire.AudioContext.updateTime(this, value);
+        }
+    });
+
+    //
+    AudioSource.prop('_playbackRate', 1.0, Fire.HideInInspector);
+    AudioSource.getset('playbackRate',
+        function () {
+            return this._playbackRate;
+        },
+        function (value) {
+            if (this._playbackRate !== value) {
+                this._playbackRate = value;
+                Fire.AudioContext.updatePlaybackRate(this);
+            }
+        }
+    );
+
+    //
     AudioSource.prop('_clip', null, Fire.HideInInspector);
     AudioSource.getset('clip',
         function () {
@@ -53,7 +68,7 @@ var AudioSource = (function () {
         Fire.ObjectType(Fire.AudioClip)
     );
 
-    //-- 是否循环
+    //
     AudioSource.prop('_loop', false, Fire.HideInInspector);
     AudioSource.getset('loop',
        function () {
@@ -67,7 +82,7 @@ var AudioSource = (function () {
        }
     );
 
-    //-- 是否禁音
+    //
     AudioSource.prop('_mute', false, Fire.HideInInspector);
     AudioSource.getset('mute',
        function () {
@@ -81,7 +96,7 @@ var AudioSource = (function () {
        }
     );
 
-    //-- 音量大小
+    //
     AudioSource.prop('_volume', 1, Fire.HideInInspector);
     AudioSource.getset('volume',
        function () {
@@ -96,44 +111,50 @@ var AudioSource = (function () {
        Fire.Range(0,1)
     );
 
-    //-- 是否立即播放
     AudioSource.prop('playOnAwake', true);
 
-    //-- 播放结束以后的回调
     AudioSource.prototype.onPlayEnd = function () {
-        if (this._paused) {
-            return;
-        }
-        if (this.onEnd) {
+        if ( this.onEnd ) {
             this.onEnd();
         }
+
         this._playing = false;
         this._paused = false;
     };
 
     AudioSource.prototype.pause = function () {
-        this._paused = true;
+        if ( this._paused )
+            return;
+
         Fire.AudioContext.pause(this);
+        this._paused = true;
     };
 
     AudioSource.prototype.play = function () {
-        Fire.AudioContext.play(this);
+        if ( this._playing && !this._paused )
+            return;
+
+        if ( this._paused )
+            Fire.AudioContext.play(this, this._startTime);
+        else
+            Fire.AudioContext.play(this, 0);
+
         this._playing = true;
         this._paused = false;
     };
 
-    AudioSource.prototype.stop = function (isAutoStop) {
-        if (!this._playing) {
+    AudioSource.prototype.stop = function () {
+        if ( !this._playing ) {
             return;
         }
-        var autoStop = (isAutoStop !== null) ? isAutoStop : true;
-        Fire.AudioContext.stop(this, autoStop);
+
+        Fire.AudioContext.stop(this);
         this._playing = false;
         this._paused = false;
     };
 
     AudioSource.prototype.onLoad = function () {
-        if (!Fire.Engine.isPlaying && this._playing) {
+        if ( !Fire.Engine.isPlaying && this._playing ) {
             this.stop();
         }
     };
