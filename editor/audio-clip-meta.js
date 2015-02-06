@@ -6,7 +6,6 @@ var AudioClipMeta = Fire.define('Fire.AudioClipMeta', Fire.AssetMeta);
 
 AudioClipMeta.prototype.createAsset = function ( path, cb ) {
     // load Fire.AudioClip
-    require('../src/audio-clip');
     var asset = new Fire.AudioClip();
     asset._setRawExtname(Path.extname(path));
     cb ( null, asset );
