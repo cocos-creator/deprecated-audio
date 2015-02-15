@@ -6,18 +6,39 @@
 
     var nativeAC = new NativeAudioContext();
 
-    function loader (url, callback, onProgress) {
+    // 添加safeDecodeAudioData的原因：https://github.com/fireball-x/dev/issues/318
+    function safeDecodeAudioData(context, buffer, url, callback) {
+        var MaxDecodeTime = 3000;
+
+        var timeOut = false;
+        var timerId = setTimeout(function () {
+            callback(null, 'Decode audio clip: "' + url + " is time out");
+        }, MaxDecodeTime);
+
+        context.decodeAudioData(buffer,
+            function (decodedData) {
+                if (!timeOut) {
+                    callback(decodedData);
+                    clearTimeout(timerId);
+                }
+            },
+            function (e) {
+                if (!timeOut) {
+                    callback(null, 'LoadAudioClip: "' + url +
+                        '" seems to be unreachable or the file is empty. InnerMessage: ' + e);
+                    clearTimeout(timerId);
+                }
+            }
+        );
+    }
+
+    function loader(url, callback, onProgress) {
         var cb = callback && function (xhr, error) {
             if (xhr) {
                 if (!nativeAC) {
                     nativeAC = new NativeAudioContext();
                 }
-                nativeAC.decodeAudioData(xhr.response, function (buffer) {
-                    callback(buffer);
-                },function (e) {
-                    callback(null, 'LoadAudioClip: "' + url +
-                    '" seems to be unreachable or the file is empty. InnerMessage: ' + e);
-                });
+                safeDecodeAudioData(nativeAC, xhr.response, url, callback);
             }
             else {
                 callback(null, 'LoadAudioClip: "' + url +
@@ -152,22 +173,34 @@
 
     //
     AudioContext.getClipLength = function (clip) {
-        return clip.rawData.duration;
+        if (clip.rawData) {
+            return clip.rawData.duration;
+        }
+        return -1;
     };
 
     //
     AudioContext.getClipSamples = function (clip) {
-        return clip.rawData.length;
+        if (clip.rawData) {
+            return clip.rawData.length;
+        }
+        return -1;
     };
 
     //
     AudioContext.getClipChannels = function (clip) {
-        return clip.rawData.numberOfChannels;
+        if (clip.rawData) {
+            return clip.rawData.numberOfChannels;
+        }
+        return -1;
     };
 
     //
     AudioContext.getClipFrequency = function (clip) {
-        return clip.rawData.sampleRate;
+        if (clip.rawData) {
+            return clip.rawData.sampleRate;
+        }
+        return -1;
     };
 
 
