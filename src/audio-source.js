@@ -154,7 +154,7 @@ var AudioSource = (function () {
     };
 
     AudioSource.prototype.onLoad = function () {
-        if ( !Fire.Engine.isPlaying && this._playing ) {
+        if (this._playing ) {
             this.stop();
         }
     };
@@ -167,7 +167,7 @@ var AudioSource = (function () {
     };
 
     AudioSource.prototype.onEnable = function () {
-        if (this.playOnAwake && Fire.Engine.isPlaying) {
+        if (this.playOnAwake) {
             this.play();
         }
     };
