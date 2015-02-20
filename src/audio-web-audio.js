@@ -8,22 +8,22 @@
 
     // 添加safeDecodeAudioData的原因：https://github.com/fireball-x/dev/issues/318
     function safeDecodeAudioData(context, buffer, url, callback) {
-        var MaxDecodeTime = 3000;
-
-        var timeOut = false;
+        var timeout = false;
         var timerId = setTimeout(function () {
-            callback(null, 'Decode audio clip: "' + url + " is time out");
-        }, MaxDecodeTime);
+            callback('The operation of decoding audio data already timeout! Audio url: "' + url +
+                     '". Set Fire.AudioContext.MaxDecodeTime to a larger value if this error often occur. ' +
+                     'See fireball-x/dev#318 for more info.', null);
+        }, AudioContext.MaxDecodeTime);
 
         context.decodeAudioData(buffer,
             function (decodedData) {
-                if (!timeOut) {
-                    callback(decodedData);
+                if (!timeout) {
+                    callback(null, decodedData);
                     clearTimeout(timerId);
                 }
             },
             function (e) {
-                if (!timeOut) {
+                if (!timeout) {
                     callback(null, 'LoadAudioClip: "' + url +
                         '" seems to be unreachable or the file is empty. InnerMessage: ' + e);
                     clearTimeout(timerId);
@@ -33,7 +33,7 @@
     }
 
     function loader(url, callback, onProgress) {
-        var cb = callback && function (xhr, error) {
+        var cb = callback && function (error, xhr) {
             if (xhr) {
                 if (!nativeAC) {
                     nativeAC = new NativeAudioContext();
@@ -41,8 +41,8 @@
                 safeDecodeAudioData(nativeAC, xhr.response, url, callback);
             }
             else {
-                callback(null, 'LoadAudioClip: "' + url +
-               '" seems to be unreachable or the file is empty. InnerMessage: ' + error);
+                callback('LoadAudioClip: "' + url +
+               '" seems to be unreachable or the file is empty. InnerMessage: ' + error, null);
             }
         };
         Fire.LoadManager._loadFromXHR(url, cb, onProgress, 'arraybuffer');
@@ -51,6 +51,8 @@
     Fire.LoadManager.registerRawTypes('audio', loader);
 
     var AudioContext = {};
+
+    AudioContext.MaxDecodeTime = 3000;
 
     AudioContext.getCurrentTime = function (target) {
         if ( target._paused ) {
