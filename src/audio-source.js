@@ -1,6 +1,6 @@
 ﻿
 var AudioSource = (function () {
-    var AudioSource = Fire.define("Fire.AudioSource", Fire.Component, function () {
+    var AudioSource = Fire.extend("Fire.AudioSource", Fire.Component, function () {
         this._playing = false; //-- 声源暂停或者停止时候为false
         this._paused = false;//-- 来区分声源是暂停还是停止
 
