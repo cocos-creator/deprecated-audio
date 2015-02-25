@@ -12,7 +12,7 @@
         var timerId = setTimeout(function () {
             callback('The operation of decoding audio data already timeout! Audio url: "' + url +
                      '". Set Fire.AudioContext.MaxDecodeTime to a larger value if this error often occur. ' +
-                     'See fireball-x/dev#318 for more info.', null);
+                     'See fireball-x/dev#318 for details.', null);
         }, AudioContext.MaxDecodeTime);
 
         context.decodeAudioData(buffer,
