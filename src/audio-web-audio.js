@@ -4,6 +4,7 @@
         return;
     }
 
+    // fix fireball-x/dev#365
     if (!Fire.nativeAC) {
         Fire.nativeAC = new NativeAudioContext();
     }
