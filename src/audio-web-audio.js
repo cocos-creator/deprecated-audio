@@ -4,7 +4,9 @@
         return;
     }
 
-    var nativeAC = new NativeAudioContext();
+    if (!Fire.nativeAC) {
+        Fire.nativeAC = new NativeAudioContext();
+    }
 
     // 添加safeDecodeAudioData的原因：https://github.com/fireball-x/dev/issues/318
     function safeDecodeAudioData(context, buffer, url, callback) {
@@ -35,10 +37,7 @@
     function loader(url, callback, onProgress) {
         var cb = callback && function (error, xhr) {
             if (xhr) {
-                if (!nativeAC) {
-                    nativeAC = new NativeAudioContext();
-                }
-                safeDecodeAudioData(nativeAC, xhr.response, url, callback);
+                safeDecodeAudioData(Fire.nativeAC, xhr.response, url, callback);
             }
             else {
                 callback('LoadAudioClip: "' + url +
@@ -67,12 +66,12 @@
     };
 
     AudioContext.getPlayedTime = function (target) {
-        return (nativeAC.currentTime - target._lastPlay) * target._playbackRate;
+        return (Fire.nativeAC.currentTime - target._lastPlay) * target._playbackRate;
     };
 
     //
     AudioContext.updateTime = function (target, time) {
-        target._lastPlay = nativeAC.currentTime;
+        target._lastPlay = Fire.nativeAC.currentTime;
         target._startTime = time;
 
         if ( target.isPlaying ) {
@@ -139,15 +138,15 @@
         if (!target.clip || !target.clip.rawData) { return; }
 
         // create buffer source
-        var bufferSource = nativeAC.createBufferSource();
+        var bufferSource = Fire.nativeAC.createBufferSource();
 
         // create volume control
-        var gain = nativeAC.createGain();
+        var gain = Fire.nativeAC.createGain();
 
         // connect
         bufferSource.connect(gain);
-        gain.connect(nativeAC.destination);
-        bufferSource.connect(nativeAC.destination);
+        gain.connect(Fire.nativeAC.destination);
+        bufferSource.connect(Fire.nativeAC.destination);
 
         // init parameters
         bufferSource.buffer = target.clip.rawData;
@@ -160,7 +159,7 @@
         target._buffSource = bufferSource;
         target._volumeGain = gain;
         target._startTime = at || 0;
-        target._lastPlay = nativeAC.currentTime;
+        target._lastPlay = Fire.nativeAC.currentTime;
 
         // play
         bufferSource.start( 0, this.getCurrentTime(target) );
