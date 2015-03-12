@@ -5,7 +5,7 @@
 
     AudioClip.get('buffer', function () {
         return Fire.AudioContext.getClipBuffer(this);
-    });
+    }, Fire.HideInInspector);
 
     AudioClip.get("length", function () {
         return Fire.AudioContext.getClipLength(this);
