@@ -52,7 +52,7 @@
 
     var AudioContext = {};
 
-    AudioContext.MaxDecodeTime = 3000;
+    AudioContext.MaxDecodeTime = 4000;
 
     AudioContext.getCurrentTime = function (target) {
         if ( target._paused ) {
