@@ -22,7 +22,8 @@
             buffer:{
                 get: function() {
                     return Fire.AudioContext.getClipBuffer(this);
-                }
+                },
+                visible: false,
             },
             /**
              * The length of the audio clip in seconds (Read Only).
