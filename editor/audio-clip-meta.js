@@ -1,9 +1,9 @@
 ﻿var Path = require('fire-path');
 
 // AudioClipMeta
-Fire.AudioClipMeta = Fire.Class({
+Editor.AudioClipMeta = Fire.Class({
     name: 'Fire.AudioClipMeta',
-    extends: Fire.AssetMeta,
+    extends: Editor.AssetMeta,
 
     constructor: function () {
         // overridable properties
@@ -23,11 +23,11 @@ Fire.AudioClipMeta = Fire.Class({
 
         Async.parallel([
             function ( next ) {
-                Fire.AssetDB.saveAssetToLibrary( file.meta.uuid, file.asset, next );
+                Editor.AssetDB.saveAssetToLibrary( file.meta.uuid, file.asset, next );
             },
 
             function ( next ) {
-                Fire.AssetDB.copyToLibrary( file.meta.uuid, Path.extname(file.path), file.path, next );
+                Editor.AssetDB.copyToLibrary( file.meta.uuid, Path.extname(file.path), file.path, next );
             },
         ], function ( err ) {
             if ( err ) {
@@ -39,4 +39,4 @@ Fire.AudioClipMeta = Fire.Class({
     },
 });
 
-module.exports = Fire.AudioClipMeta;
+module.exports = Editor.AudioClipMeta;
