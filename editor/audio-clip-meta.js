@@ -2,7 +2,7 @@
 
 // AudioClipMeta
 Editor.AudioClipMeta = Fire.Class({
-    name: 'Fire.AudioClipMeta',
+    name: 'Editor.AudioClipMeta',
     extends: Editor.AssetMeta,
 
     constructor: function () {
